@@ -3,19 +3,21 @@ import streamlit as st
 import os
 import sys
 from pathlib import Path
-from dotenv import load_dotenv  # Import load_dotenv
+from dotenv import load_dotenv
 import logging
+from google.cloud import storage
+import tempfile
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Load environment variables from .env file
-load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+# Load environment variables from .env file if not in production
+if not os.getenv("K_SERVICE"):  # Check if running in Cloud Run
+    load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
 
 sys.path.append(str(Path(__file__).resolve().parent / "app"))
 from services.grading_service import GradingService
-import tempfile
 
 # Set page config
 st.set_page_config(
@@ -29,18 +31,41 @@ if not os.getenv("GOOGLE_CLOUD_PROJECT"):
     st.error("GOOGLE_CLOUD_PROJECT environment variable is not set.")
     sys.exit(1)
 
-if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-    st.error("GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.")
-    sys.exit(1)
-
 # Initialize services
 grading_service = GradingService()
 
-# Create required directories
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-OUTPUT_DIR = Path("static/output")
-OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+# Initialize Google Cloud Storage if in production
+if os.getenv("K_SERVICE"):
+    storage_client = storage.Client()
+    bucket_name = f"{os.getenv('GOOGLE_CLOUD_PROJECT')}-ai-grader"
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+    except Exception:
+        bucket = storage_client.create_bucket(bucket_name)
+else:
+    # Create local directories in development
+    UPLOAD_DIR = Path("uploads")
+    UPLOAD_DIR.mkdir(exist_ok=True)
+    OUTPUT_DIR = Path("static/output")
+    OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
+
+def save_to_storage(file_data, filename, folder="output"):
+    """Save file to appropriate storage (GCS in production, local in development)"""
+    if os.getenv("K_SERVICE"):
+        blob = bucket.blob(f"{folder}/{filename}")
+        if isinstance(file_data, bytes):
+            blob.upload_from_string(file_data)
+        else:
+            blob.upload_from_filename(file_data)
+        return blob.public_url
+    else:
+        output_path = Path(f"static/{folder}/{filename}")
+        if isinstance(file_data, bytes):
+            output_path.write_bytes(file_data)
+        else:
+            from shutil import copy
+            copy(file_data, output_path)
+        return str(output_path)
 
 def main():
     st.title("AI Grader 📝")
@@ -79,9 +104,13 @@ def main():
                     student_name
                 )
                 
-                # Store paths in session state
-                st.session_state.marked_pdf = marked_pdf_path
-                st.session_state.report_pdf = report_path
+                # Save to appropriate storage
+                marked_pdf_url = save_to_storage(marked_pdf_path, f"{student_name}_marked.pdf")
+                report_url = save_to_storage(report_path, f"{student_name}_report.pdf")
+                
+                # Store URLs in session state
+                st.session_state.marked_pdf = marked_pdf_url
+                st.session_state.report_pdf = report_url
                 
                 # Show success message
                 st.success("Grading completed successfully!")
@@ -89,6 +118,8 @@ def main():
                 # Clean up temporary files
                 os.unlink(answer_paper_path)
                 os.unlink(answer_key_path)
+                os.unlink(marked_pdf_path)
+                os.unlink(report_path)
                 
             except Exception as e:
                 logger.error(f"Error processing submission: {str(e)}")
@@ -99,24 +130,10 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            with open(st.session_state.marked_pdf, "rb") as file:
-                st.download_button(
-                    label="Download Marked PDF",
-                    data=file,
-                    file_name=f"marked_answer.pdf",
-                    mime="application/pdf",
-                    key="marked_pdf_download"
-                )
+            st.markdown(f'<a href="{st.session_state.marked_pdf}" target="_blank">Download Marked PDF</a>', unsafe_allow_html=True)
         
         with col2:
-            with open(st.session_state.report_pdf, "rb") as file:
-                st.download_button(
-                    label="Download Report",
-                    data=file,
-                    file_name=f"grading_report.pdf",
-                    mime="application/pdf",
-                    key="report_pdf_download"
-                )
+            st.markdown(f'<a href="{st.session_state.report_pdf}" target="_blank">Download Report</a>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
