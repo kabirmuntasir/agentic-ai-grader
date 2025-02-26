@@ -1,0 +1,10 @@
+streamlit
+google-cloud-aiplatform
+google-cloud-vision
+google-cloud-storage
+pypdf2
+python-dotenv
+pydantic
+numpy
+pandas
+PyMuPDF
