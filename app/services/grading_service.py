@@ -1,9 +1,13 @@
+import logging
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    from PyMuPDF import fitz
 from pathlib import Path
 from typing import Tuple, Dict, List
 from .pdf_service import PDFService
 from .gemini_service import GeminiService
 import os
-import fitz
 
 class GradingService:
     def __init__(self):

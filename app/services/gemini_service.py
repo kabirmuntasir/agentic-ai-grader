@@ -1,12 +1,8 @@
 # filepath: /c:/Users/kabir/Documents/PythonRepos/ai-grader/app/services/gemini_service.py
 import logging
-from google.cloud import aiplatform
-import vertexai
-from vertexai.generative_models import GenerativeModel
-from typing import List, Tuple, Dict
+from langchain_google_genai import ChatGoogleGenerativeAI
 import json
 import os
-from pathlib import Path
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -14,25 +10,77 @@ logger = logging.getLogger(__name__)
 
 class GeminiService:
     def __init__(self):
-        # Initialize Vertex AI
-        project_id = os.getenv("GOOGLE_CLOUD_PROJECT")
-        location = os.getenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError("GOOGLE_API_KEY environment variable is not set.")
         
-        if not project_id:
-            raise ValueError("GOOGLE_CLOUD_PROJECT environment variable is not set.")
-        
-        vertexai.init(
-            project=project_id,
-            location=location
+        # Initialize Langchain's Gemini model
+        self.model = ChatGoogleGenerativeAI(
+            model="gemini-1.5-pro",
+            google_api_key=api_key,
+            temperature=0.3,
+            convert_system_message_to_human=True
         )
-        self.model = GenerativeModel("gemini-pro")
-        
+    
+    def invoke(self, prompt: str) -> str:
+        """
+        Invoke the Gemini model through Langchain.
+        """
+        try:
+            # Create a structured message to ensure JSON response
+            structured_prompt = f"""
+            {prompt}
+            
+            IMPORTANT: Your response must be valid JSON. Do not include any explanatory text.
+            If the response includes JSON, wrap it in ```json``` markers.
+            
+            Example format:
+            ```json
+            {{"key": "value"}}
+            ```
+            
+            ONLY return the JSON object, no other text or explanation.
+            """
+            
+            response = self.model.invoke(structured_prompt)
+            
+            # Log raw response for debugging
+            logger.debug(f"Raw response from Gemini: {response}")
+            
+            # Clean up the response text and handle potential JSON issues
+            cleaned_response_text = (
+                response.content
+                .strip()
+                .split("```json")[-1]  # Take the last part if multiple JSON blocks exist
+                .split("```")[0]  # Take content between ``` markers
+                .strip()
+            )
+            
+            # Log cleaned response for debugging
+            logger.debug(f"Cleaned response text: {cleaned_response_text}")
+            
+            # Validate JSON before returning
+            try:
+                json.loads(cleaned_response_text)  # Test if it's valid JSON
+            except json.JSONDecodeError:
+                # If not valid JSON, try to fix common issues
+                fixed_text = cleaned_response_text.replace("'", '"')  # Replace single quotes with double quotes
+                fixed_text = fixed_text.replace('\n', ' ')  # Remove newlines
+                json.loads(fixed_text)  # Test again
+                cleaned_response_text = fixed_text
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error invoking Gemini model: {str(e)}")
+            raise
+    
     def evaluate_answer(
         self,
         student_answer: str,
         correct_answer: str,
         max_score: int
-    ) -> Tuple[int, str, bool]:
+    ) -> tuple[int, str, bool]:
         """
         Evaluate a student's answer against the correct answer using Gemini model.
         Returns: (score, feedback, is_correct)
@@ -64,14 +112,14 @@ class GeminiService:
             logger.info(f"Sending prompt to Gemini: {prompt}")
             
             # Get prediction
-            response = self.model.generate_content(prompt)
+            response = self.invoke(prompt)
             
             # Log the response
-            logger.info(f"Received response from Gemini: {response.text}")
+            logger.info(f"Received response from Gemini: {response.content}")
             
             # Clean up the response text and handle potential JSON issues
             cleaned_response_text = (
-                response.text
+                response.content
                 .strip()
                 .split("```json")[-1]  # Take the last part if multiple JSON blocks exist
                 .split("```")[0]  # Take content between ``` markers
@@ -109,34 +157,12 @@ class GeminiService:
             
         except Exception as e:
             logger.error(f"Error evaluating answer with Gemini: {str(e)}")
-            logger.error(f"Response text: {response.text}")
-            raise Exception(f"Error evaluating answer with Gemini: {str(e)}")
-    
-    def batch_evaluate_answers(
-        self,
-        answer_pairs: List[Dict[str, str]],
-        scoring_rubric: Dict[int, int]  # question_num: max_score
-    ) -> List[Tuple[int, int, str]]:
-        """
-        Evaluate multiple answers and return list of (question_num, score, feedback)
-        """
-        results = []
-        
-        for q_num, pair in enumerate(answer_pairs, 1):
-            max_score = scoring_rubric.get(q_num, 10)  # Default max score is 10
-            score, feedback, _ = self.evaluate_answer(
-                pair["student_answer"],
-                pair["correct_answer"],
-                max_score
-            )
-            results.append((q_num, score, feedback))
-        
-        return results
+            raise
     
     def extract_answers_from_text(
         self,
         text_content: str
-    ) -> Dict[int, str]:
+    ) -> dict[int, str]:
         """
         Extract answers from text content using Gemini's text understanding capabilities.
         Returns a dictionary of question numbers to answers.
@@ -163,14 +189,14 @@ class GeminiService:
             logger.info(f"Sending prompt to Gemini: {prompt}")
             
             # Get prediction
-            response = self.model.generate_content(prompt)
+            response = self.invoke(prompt)
             
             # Log the response
-            logger.info(f"Received response from Gemini: {response.text}")
+            logger.info(f"Received response from Gemini: {response.content}")
             
             # Clean up the response text and handle potential JSON issues
             cleaned_response_text = (
-                response.text
+                response.content
                 .strip()
                 .split("```json")[-1]  # Take the last part if multiple JSON blocks exist
                 .split("```")[0]  # Take content between ``` markers
@@ -192,5 +218,4 @@ class GeminiService:
             
         except Exception as e:
             logger.error(f"Error extracting answers with Gemini: {str(e)}")
-            logger.error(f"Response text: {response.text}")
-            raise Exception(f"Error extracting answers with Gemini: {str(e)}")
+            raise

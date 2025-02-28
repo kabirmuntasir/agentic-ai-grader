@@ -1,4 +1,8 @@
-import fitz  # PyMuPDF
+import logging
+try:
+    import fitz  # PyMuPDF
+except ImportError:
+    from PyMuPDF import fitz
 from pathlib import Path
 from typing import List, Tuple
 import os
