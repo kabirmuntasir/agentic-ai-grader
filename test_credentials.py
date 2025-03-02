@@ -18,7 +18,7 @@ def test_gcp_connection():
         )
         
         # Try to access Gemini model
-        model = GenerativeModel("gemini-pro")
+        model = GenerativeModel("gemini-1.5-pro")
         
         print("✅ Successfully connected to GCP!")
         print(f"Project ID: {project_id}")

@@ -1,4 +1,8 @@
 streamlit
+langchain
+langchain-google-genai
+langchain-google
+langchain-community
 google-cloud-aiplatform
 google-cloud-vision
 google-cloud-storage
@@ -8,3 +12,6 @@ pydantic
 numpy
 pandas
 PyMuPDF
+reportlab
+python-magic-bin; platform_system == "Windows"
+python-magic; platform_system != "Windows"
