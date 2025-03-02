@@ -1,32 +1,47 @@
 # AI Grader Pro
 
-An AI-powered grading system that uses Google's Gemini model to automatically grade student answer papers by comparing them with answer keys. The system employs an agentic approach with specialized AI agents for different aspects of the grading process.
+An intelligent, AI-powered grading system that leverages Google's Gemini model to automatically grade student answer papers by comparing them with answer keys. The system employs a multi-agent architecture where specialized AI agents handle different aspects of the grading process.
 
-## Features
+## Key Features
 
-- Upload and process PDF answer papers and answer keys
-- AI-powered answer evaluation using Google's Gemini model
-- Intelligent document analysis with automatic question and answer identification
-- Multi-agent architecture for specialized processing:
-  - Document analysis agent for layout understanding
-  - Grading agent for answer evaluation
-  - PDF formatting agent for feedback placement
-  - Quality control agent for output verification
-- Smart feedback placement:
-  - Feedback appears immediately after each answer
-  - Proper line breaks and spacing for readability
-  - No overlapping between answers and feedback
-  - Clear color-coding (green for correct, red for incorrect)
-- Detailed grading reports with scores and comments
-- Modern and user-friendly Streamlit interface
+- **Intelligent Document Analysis**: Automatically analyzes PDF documents to identify questions and answer regions
+- **AI-Powered Grading**: Uses Google's Gemini model to evaluate student answers against an answer key
+- **Smart Feedback Placement**: Places feedback directly on the student's paper with appropriate formatting and color-coding
+- **Quality Control**: Automatically verifies output quality and makes improvements if needed
+- **Detailed Reports**: Generates comprehensive grading reports with scores and personalized feedback
+- **Modern UI**: Clean, intuitive Streamlit interface with real-time grading progress display
+- **Example Files**: Includes sample student answers and answer keys for testing
 
-## Prerequisites
+## Technical Architecture
+
+### Multi-Agent Design
+
+The system is built on a multi-agent architecture where specialized AI agents work together:
+
+1. **Document Analyzer Agent**: Analyzes PDF layout to identify questions and answer regions
+2. **Grading Agent**: Evaluates student answers against the answer key
+3. **PDF Formatting Agent**: Places feedback appropriately on the student's paper
+4. **Quality Control Agent**: Verifies output quality and suggests improvements
+
+### Grading Process Flow
+
+1. **Document Analysis**: Examines the structure of both the answer paper and answer key
+2. **Answer Extraction**: Extracts individual answers from the student's paper
+3. **Grading**: Evaluates each answer against the answer key using the Gemini model
+4. **Feedback Generation**: Generates detailed feedback for each answer
+5. **PDF Formatting**: Places feedback in the appropriate locations in the document
+6. **Quality Control**: Verifies the output to ensure feedback is properly placed and readable
+7. **Report Generation**: Creates a summary report with overall scores and comments
+
+## Setup and Installation
+
+### Prerequisites
 
 - Python 3.8 or higher
 - Google Cloud Platform account with Gemini API access
 - Google Cloud credentials configured
 
-## Installation
+### Installation
 
 1. Clone the repository:
 ```bash
@@ -57,7 +72,16 @@ pip install -r requirements.txt
      GOOGLE_CLOUD_LOCATION=us-central1
      ```
 
-## Usage
+### Docker Support
+
+The application includes Docker support for containerized deployment:
+
+```bash
+docker build -t ai-grader .
+docker run -p 8501:8501 ai-grader
+```
+
+## Usage Guide
 
 1. Start the Streamlit application:
 ```bash
@@ -71,17 +95,7 @@ streamlit run app.py
    - Upload the student's answer paper (PDF) or use the provided example
    - Upload the answer key (PDF) or use the provided example
    - Click "Grade Paper"
-   - View the marked PDF and download the results
-
-### Grading Process Flow
-
-1. **Document Analysis**: The document analyzer agent examines the structure of both the answer paper and answer key to identify questions and answers.
-2. **Answer Extraction**: The system extracts individual answers from the student's paper based on the layout analysis.
-3. **Grading**: The grading agent evaluates each answer against the answer key using the Gemini model.
-4. **Feedback Generation**: The system generates detailed feedback for each answer.
-5. **PDF Formatting**: The PDF formatting agent places feedback in the appropriate locations in the document.
-6. **Quality Control**: The quality control agent verifies the output to ensure feedback is properly placed and readable.
-7. **Report Generation**: A summary report is generated with overall scores and comments.
+   - View the marked PDF and download the results (marked PDF and report)
 
 ## Project Structure
 
@@ -89,6 +103,8 @@ streamlit run app.py
 ai-grader/
 ├── app.py                  # Main Streamlit application
 ├── requirements.txt        # Python dependencies
+├── Dockerfile              # Docker configuration
+├── .env                    # Environment variables (create from template)
 ├── app/
 │   ├── agents/
 │   │   ├── document_analyzer.py   # Document layout analysis
@@ -98,24 +114,21 @@ ai-grader/
 │   └── services/
 │       ├── agentic_grading_service.py  # Coordinates the grading process
 │       ├── gemini_service.py           # Gemini AI integration
-│       ├── pdf_service.py              # PDF processing
-│       └── grading_service.py          # Basic grading functionality
 ├── examples/               # Example files for testing
-│   ├── student_answer.pdf
-│   └── answer_key.pdf
 ├── static/
 │   └── output/             # Generated PDFs and reports
-└── uploads/                # Temporary storage for uploads
+├── uploads/                # Temporary storage for uploads
+└── credentials/            # Google Cloud credentials (not included in repo)
 ```
 
-## Configuration
+## Environment Configuration
 
 The application uses the following environment variables:
 - `GOOGLE_APPLICATION_CREDENTIALS`: Path to Google Cloud service account key file
 - `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID
 - `GOOGLE_CLOUD_LOCATION`: Google Cloud region (default: us-central1)
 
-## Testing Credentials
+## Testing
 
 You can test your Google Cloud credentials setup by running:
 ```bash
@@ -124,13 +137,14 @@ python test_credentials.py
 
 This will verify that your credentials are correctly configured and that you can access the Gemini model.
 
-## Contributing
+## Future Enhancements
 
-1. Fork the repository
-2. Create a new branch for your feature
-3. Commit your changes
-4. Push to your branch
-5. Create a Pull Request
+- Support for additional file formats beyond PDF
+- Integration with learning management systems (LMS)
+- Batch processing of multiple submissions
+- Enhanced analytics and reporting capabilities
+- Customizable grading rubrics
+- Support for additional languages
 
 ## License
 
