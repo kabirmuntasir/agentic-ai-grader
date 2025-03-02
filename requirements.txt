@@ -1,7 +1,6 @@
 streamlit
 langchain
 langchain-google-genai
-langchain-google
 langchain-community
 google-cloud-aiplatform
 google-cloud-vision

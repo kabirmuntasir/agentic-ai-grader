@@ -10,4 +10,6 @@ venv/
 uploads/*
 static/output/*
 credentials/*
-*.pdf 
+# Allow example PDFs but exclude other PDFs
+uploads/*.pdf
+static/*.pdf 
